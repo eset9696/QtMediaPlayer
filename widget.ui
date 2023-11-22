@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>863</width>
-    <height>242</height>
+    <height>476</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -21,8 +21,8 @@
   <widget class="QPushButton" name="pushButtonPlay">
    <property name="geometry">
     <rect>
-     <x>250</x>
-     <y>100</y>
+     <x>280</x>
+     <y>80</y>
      <width>80</width>
      <height>21</height>
     </rect>
@@ -34,8 +34,8 @@
   <widget class="QPushButton" name="pushButtonPause">
    <property name="geometry">
     <rect>
-     <x>350</x>
-     <y>100</y>
+     <x>180</x>
+     <y>80</y>
      <width>80</width>
      <height>21</height>
     </rect>
@@ -47,8 +47,8 @@
   <widget class="QPushButton" name="pushButtonStop">
    <property name="geometry">
     <rect>
-     <x>450</x>
-     <y>100</y>
+     <x>380</x>
+     <y>80</y>
      <width>80</width>
      <height>21</height>
     </rect>
@@ -60,9 +60,9 @@
   <widget class="QLabel" name="labelComposition">
    <property name="geometry">
     <rect>
-     <x>50</x>
-     <y>60</y>
-     <width>581</width>
+     <x>80</x>
+     <y>120</y>
+     <width>601</width>
      <height>31</height>
     </rect>
    </property>
@@ -74,7 +74,7 @@
    <property name="geometry">
     <rect>
      <x>50</x>
-     <y>100</y>
+     <y>200</y>
      <width>80</width>
      <height>21</height>
     </rect>
@@ -86,8 +86,8 @@
   <widget class="QPushButton" name="pushButtonPrev">
    <property name="geometry">
     <rect>
-     <x>150</x>
-     <y>100</y>
+     <x>80</x>
+     <y>80</y>
      <width>80</width>
      <height>21</height>
     </rect>
@@ -99,8 +99,8 @@
   <widget class="QPushButton" name="pushButtonNext">
    <property name="geometry">
     <rect>
-     <x>550</x>
-     <y>100</y>
+     <x>480</x>
+     <y>80</y>
      <width>80</width>
      <height>21</height>
     </rect>
@@ -113,7 +113,7 @@
    <property name="geometry">
     <rect>
      <x>650</x>
-     <y>100</y>
+     <y>60</y>
      <width>160</width>
      <height>16</height>
     </rect>
@@ -126,7 +126,7 @@
    <property name="geometry">
     <rect>
      <x>650</x>
-     <y>70</y>
+     <y>30</y>
      <width>161</width>
      <height>16</height>
     </rect>
@@ -138,10 +138,10 @@
   <widget class="QSlider" name="horizontalSliderProgress">
    <property name="geometry">
     <rect>
-     <x>50</x>
-     <y>180</y>
-     <width>761</width>
-     <height>16</height>
+     <x>80</x>
+     <y>160</y>
+     <width>601</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="orientation">
@@ -151,8 +151,8 @@
   <widget class="QLabel" name="labelProgress">
    <property name="geometry">
     <rect>
-     <x>50</x>
-     <y>150</y>
+     <x>10</x>
+     <y>160</y>
      <width>47</width>
      <height>13</height>
     </rect>
@@ -164,14 +164,40 @@
   <widget class="QLabel" name="labelDuration">
    <property name="geometry">
     <rect>
-     <x>750</x>
-     <y>150</y>
-     <width>47</width>
-     <height>13</height>
+     <x>700</x>
+     <y>160</y>
+     <width>151</width>
+     <height>20</height>
     </rect>
    </property>
    <property name="text">
     <string>Duration</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pushButtonMute">
+   <property name="geometry">
+    <rect>
+     <x>820</x>
+     <y>50</y>
+     <width>31</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QTableView" name="tableviewPlaylist">
+   <property name="geometry">
+    <rect>
+     <x>50</x>
+     <y>240</y>
+     <width>751</width>
+     <height>192</height>
+    </rect>
    </property>
   </widget>
  </widget>

@@ -16,6 +16,7 @@ Widget::Widget(QWidget *parent)
     ui->pushButtonPause->setIcon(style()->standardIcon(QStyle::SP_MediaPause));
     ui->pushButtonNext->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
     ui->pushButtonStop->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
+    ui->pushButtonMute->setIcon(style()->standardIcon(QStyle::SP_MediaVolume));
 
     //Player init:
     m_player = new QMediaPlayer(this);
@@ -26,31 +27,64 @@ Widget::Widget(QWidget *parent)
 
     //Connections:
     connect(m_player,SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),this,SLOT(mediaStatusChanged(QMediaPlayer::MediaStatus)));
-    connect(m_player,SIGNAL(positionChanged(qint64)),this,SLOT(progressChanged(qint64)));
+    connect(m_player,SIGNAL(positionChanged(qint64)),this,SLOT(on_positionChanged(qint64)));
+    connect(m_player,SIGNAL(durationChanged(qint64)),this,SLOT(on_durationChanged(qint64)));
 
-    //taskbarprogress
+    //taskbarprogress:
     taskbarButton = new QWinTaskbarButton(this);
     taskbarButton->setWindow(windowHandle());
     taskbar = taskbarButton->progress();
     taskbar->show();
 
+    //playlist:
+
+    m_playlist_model = new QStandardItemModel(this);
+    ui->tableviewPlaylist->setModel(m_playlist_model);
+    m_playlist_model->setHorizontalHeaderLabels(QStringList() << "Audio track" << "File path");
+    m_playlist = new QMediaPlaylist(m_player);
+    ui->tableviewPlaylist->hideColumn(1);
+    ui->tableviewPlaylist->horizontalHeader()->setStretchLastSection(true);
+    ui->tableviewPlaylist->setEditTriggers(QAbstractItemView::NoEditTriggers);
+
+
+
 }
 Widget::~Widget()
 {
+    delete m_playlist;
+    delete m_playlist_model;
+    delete taskbarButton;
+    delete m_player;
     delete ui;
 }
 
 
 void Widget::on_pushButtonOpen_clicked()
 {
-    QString file = QFileDialog::getOpenFileName(
-                this,               //Parent window
-                tr("Open file"),    //Title of dialog window
-                "D:\\Музыка\\Моя музыка",            //Рабочий каталог
+//    QString file = QFileDialog::getOpenFileName(
+//                this,               //Parent window
+//                tr("Open file"),    //Title of dialog window
+//                "D:\\Музыка\\Моя музыка",            //Рабочий каталог
+//                tr("Audio files (*.mp3 *.flac)")
+//                );
+//    m_player->setMedia(QUrl::fromLocalFile(file));
+//    ui->labelComposition->setText(file.split('/').last());
+//    this->setWindowTitle(QString("Potato Music - ").append((file.split('/').last())));
+    QStringList files = QFileDialog::getOpenFileNames(
+                this,
+                tr("Open file"),
+                "D:\\Музыка\\Моя музыка",
                 tr("Audio files (*.mp3 *.flac)")
                 );
-    ui->labelComposition->setText(file);
-    m_player->setMedia(QUrl::fromLocalFile(file));
+    for (QString filesPath: files)
+    {
+        QList<QStandardItem*> items;
+        items.append(new QStandardItem(QDir(filesPath).dirName()));
+        items.append(new QStandardItem(filesPath));
+        m_playlist_model->appendRow(items);
+        m_playlist->addMedia(QUrl(filesPath));
+    }
+    m_player->setPlaylist(m_playlist);
 }
 
 
@@ -64,14 +98,14 @@ void Widget::on_horizontalSliderVolume_valueChanged(int value)
 void Widget::on_pushButtonPlay_clicked()
 {
     m_player->play();
-    ui->labelDuration->setText(secondsToMinutes(m_player->duration()/1000));
+    //ui->labelDuration->setText(secondsToMinutes(m_player->duration()/1000));
     taskbar->resume();
 }
 
 
 void Widget::mediaStatusChanged(QMediaPlayer::MediaStatus state)
 {
-    //ui->labelProgress->setText("pause");
+
 }
 
 void Widget::on_pushButtonPause_clicked()
@@ -81,11 +115,20 @@ void Widget::on_pushButtonPause_clicked()
 }
 
 
-void Widget::progressChanged(qint64 pos)
+void Widget::on_positionChanged(qint64 progress)
 {
-    ui->labelProgress->setText(secondsToMinutes(m_player->position()/1000));
-    ui->horizontalSliderProgress->setValue((int)((double)m_player->position()/(m_player->duration()/100)));
-    taskbar->setValue((int)((double)m_player->position()/(m_player->duration()/100)));
+    ui->horizontalSliderProgress->setValue(progress);
+    QTime qt_position = QTime::fromMSecsSinceStartOfDay(progress);
+    ui->labelProgress->setText(qt_position.toString("mm:ss"));
+    taskbar->setValue(progress);
+}
+
+void Widget::on_durationChanged(qint64 duration)
+{
+   ui->horizontalSliderProgress->setMaximum(duration);
+   QTime qt_duration = QTime::fromMSecsSinceStartOfDay(duration);
+   ui->labelDuration->setText(QString("Duration:").append(qt_duration.toString("mm:ss")));
+   taskbar->setMaximum(duration);
 }
 
 
@@ -100,8 +143,8 @@ QString Widget::secondsToMinutes(const qint64 seconds)
 
 void Widget::on_horizontalSliderProgress_sliderMoved(int position)
 {
-    m_player->setPosition(position * m_player->duration()/100);
-    ui->labelProgress->setText(secondsToMinutes(position * m_player->duration()/100000));
+    m_player->setPosition(position);
+    //ui->labelProgress->setText(secondsToMinutes(position * m_player->duration()/100000));
 }
 
 
@@ -121,6 +164,7 @@ void Widget::on_pushButtonStop_clicked()
 {
     m_player->stop();
     taskbar->stop();
+    this->setWindowTitle(QString("Potato Music"));
 }
 
 void Widget::showEvent(QShowEvent *event)
@@ -130,6 +174,28 @@ void Widget::showEvent(QShowEvent *event)
 }
 
 
+void Widget::on_pushButtonMute_clicked()
+{
+    muted = !muted;
+    m_player->setMuted(muted);
+    ui->pushButtonMute->setIcon(style()->standardIcon(muted?QStyle::SP_MediaVolumeMuted:QStyle::SP_MediaVolume));
+}
 
 
+void Widget::on_pushButtonPrev_clicked()
+{
+    m_playlist->previous();
+}
+
+
+void Widget::on_pushButtonNext_clicked()
+{
+    m_playlist->next();
+}
+
+
+void Widget::on_tableviewPlaylist_doubleClicked(const QModelIndex &index)
+{
+    //m_playlist->setCurrentIndex(index);
+}
 

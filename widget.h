@@ -4,6 +4,8 @@
 #include <QWidget>
 #include <QMediaPlayer>
 #include <QtWinExtras>
+#include <QMediaPlaylist>
+#include <QStandardItemModel>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Widget; }
@@ -28,7 +30,7 @@ private slots:
 
     void on_pushButtonPause_clicked();
 
-    void progressChanged(qint64 progress);
+    void on_positionChanged(qint64 progress);
 
     QString secondsToMinutes(const qint64 seconds);
 
@@ -38,9 +40,19 @@ private slots:
 
     void on_horizontalSliderProgress_sliderReleased();
 
+    void on_durationChanged(qint64 duration);
+
     void on_pushButtonStop_clicked();
 
     void showEvent(QShowEvent *event);
+    void on_pushButtonMute_clicked();
+
+    void on_pushButtonPrev_clicked();
+
+    void on_pushButtonNext_clicked();
+
+    void on_tableviewPlaylist_doubleClicked(const QModelIndex &index);
+
 private:
     Ui::Widget *ui;
 
@@ -49,5 +61,11 @@ private:
     QWinTaskbarButton* taskbarButton;
 
     QWinTaskbarProgress* taskbar;
+
+    bool muted = false;
+
+    QMediaPlaylist* m_playlist;
+
+    QStandardItemModel* m_playlist_model;
 };
 #endif // WIDGET_H
