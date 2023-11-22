@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/Ico">
+        <file>Icons/1904664-audio-music-note-player-radio-song-sound_122513.ico</file>
+        <file>Icons/1485968501-musicsocialnetworkbrandlogo_78889.ico</file>
+        <file>Icons/arrow_right_icon_257122.ico</file>
+        <file>Icons/videoplayerpausebutton_85751.ico</file>
+    </qresource>
+</RCC>
