@@ -53,6 +53,12 @@ private slots:
 
     void on_tableviewPlaylist_doubleClicked(const QModelIndex &index);
 
+    void on_pushButtonShuffle_clicked();
+
+    void on_pushButtonRound_clicked();
+
+    void currentIndexChanged(int index);
+
 private:
     Ui::Widget *ui;
 

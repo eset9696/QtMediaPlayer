@@ -17,6 +17,7 @@ Widget::Widget(QWidget *parent)
     ui->pushButtonNext->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
     ui->pushButtonStop->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
     ui->pushButtonMute->setIcon(style()->standardIcon(QStyle::SP_MediaVolume));
+    ui->pushButtonShuffle->setIcon(style()->standardIcon(QStyle::SP_MessageBoxCritical));
 
     //Player init:
     m_player = new QMediaPlayer(this);
@@ -29,6 +30,7 @@ Widget::Widget(QWidget *parent)
     connect(m_player,SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),this,SLOT(mediaStatusChanged(QMediaPlayer::MediaStatus)));
     connect(m_player,SIGNAL(positionChanged(qint64)),this,SLOT(on_positionChanged(qint64)));
     connect(m_player,SIGNAL(durationChanged(qint64)),this,SLOT(on_durationChanged(qint64)));
+
 
     //taskbarprogress:
     taskbarButton = new QWinTaskbarButton(this);
@@ -47,7 +49,7 @@ Widget::Widget(QWidget *parent)
     ui->tableviewPlaylist->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
 
-
+    connect(m_playlist,SIGNAL(currentIndexChanged(int)),this,SLOT(currentIndexChanged(int)));
 }
 Widget::~Widget()
 {
@@ -85,6 +87,7 @@ void Widget::on_pushButtonOpen_clicked()
         m_playlist->addMedia(QUrl(filesPath));
     }
     m_player->setPlaylist(m_playlist);
+    ui->tableviewPlaylist->selectRow(m_playlist->currentIndex());
 }
 
 
@@ -185,17 +188,36 @@ void Widget::on_pushButtonMute_clicked()
 void Widget::on_pushButtonPrev_clicked()
 {
     m_playlist->previous();
+    //ui->tableviewPlaylist->selectRow(m_playlist->currentIndex());
 }
 
 
 void Widget::on_pushButtonNext_clicked()
 {
     m_playlist->next();
+    //ui->tableviewPlaylist->selectRow(m_playlist->currentIndex());
 }
 
 
 void Widget::on_tableviewPlaylist_doubleClicked(const QModelIndex &index)
 {
-    //m_playlist->setCurrentIndex(index);
+    m_playlist->setCurrentIndex(index.row());
 }
 
+
+void Widget::on_pushButtonShuffle_clicked()
+{
+    m_playlist->shuffle();
+}
+
+
+void Widget::on_pushButtonRound_clicked()
+{
+    m_playlist->setPlaybackMode(QMediaPlaylist::Loop);
+}
+
+
+void Widget::currentIndexChanged(int index)
+{
+    ui->tableviewPlaylist->selectRow(index);
+}
