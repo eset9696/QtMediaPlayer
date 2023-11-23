@@ -59,6 +59,10 @@ private slots:
 
     void currentIndexChanged(int index);
 
+    void savePlaylist();
+
+    void loadPlaylist();
+
 private:
     Ui::Widget *ui;
 

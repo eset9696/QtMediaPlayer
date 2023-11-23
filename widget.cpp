@@ -17,7 +17,11 @@ Widget::Widget(QWidget *parent)
     ui->pushButtonNext->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
     ui->pushButtonStop->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
     ui->pushButtonMute->setIcon(style()->standardIcon(QStyle::SP_MediaVolume));
-    ui->pushButtonShuffle->setIcon(style()->standardIcon(QStyle::SP_MessageBoxCritical));
+    QPixmap shuffle("D:\\Qt\\Source\\Repos\\Qt\\MediaPlayer\\Icons\\shuffle.png");
+    QPixmap round("D:\\Qt\\Source\\Repos\\Qt\\MediaPlayer\\Icons\\round.png");
+    ui->pushButtonShuffle->setIcon(QIcon(shuffle));
+    ui->pushButtonRound->setIcon(QIcon(round));
+
 
     //Player init:
     m_player = new QMediaPlayer(this);
@@ -50,9 +54,13 @@ Widget::Widget(QWidget *parent)
 
 
     connect(m_playlist,SIGNAL(currentIndexChanged(int)),this,SLOT(currentIndexChanged(int)));
+
+    loadPlaylist();
+    m_player->setPlaylist(m_playlist);
 }
 Widget::~Widget()
 {
+    savePlaylist();
     delete m_playlist;
     delete m_playlist_model;
     delete taskbarButton;
@@ -220,4 +228,19 @@ void Widget::on_pushButtonRound_clicked()
 void Widget::currentIndexChanged(int index)
 {
     ui->tableviewPlaylist->selectRow(index);
+}
+
+
+void Widget::savePlaylist()
+{
+    m_playlist->save(QUrl("file:///D:\\Qt\\Source\\Repos\\Qt\\MediaPlayer\\Save\\playlist.txt"), "m3u");
+    ui->labelComposition->setText("save done");
+}
+
+void Widget::loadPlaylist()//in progress
+{
+    QUrl url = QUrl::fromLocalFile("file:///D:/Qt/Source/Repos/Qt/MediaPlayer/Save/playlist.txt");
+    m_playlist->load(url);
+    ui->labelComposition->setText("load done " +  QString::number(m_playlist->mediaCount()));
+    m_player->setPlaylist(m_playlist);
 }
