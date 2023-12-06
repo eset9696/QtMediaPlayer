@@ -9,11 +9,12 @@ Widget::Widget(QWidget *parent)
     , ui(new Ui::Widget)
 {
     ui->setupUi(this);
+    QWidget::setFixedSize(QWidget::width(), QWidget::height());
     //Buttons style:
     ui->pushButtonOpen->setIcon(style()->standardIcon(QStyle::SP_DriveCDIcon));
     ui->pushButtonPrev->setIcon(style()->standardIcon(QStyle::SP_MediaSkipBackward));
-    ui->pushButtonPlay->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
-    ui->pushButtonPause->setIcon(style()->standardIcon(QStyle::SP_MediaPause));
+    ui->pushButtonPlayPause->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+
     ui->pushButtonNext->setIcon(style()->standardIcon(QStyle::SP_MediaSkipForward));
     ui->pushButtonStop->setIcon(style()->standardIcon(QStyle::SP_MediaStop));
     ui->pushButtonMute->setIcon(style()->standardIcon(QStyle::SP_MediaVolume));
@@ -29,12 +30,7 @@ Widget::Widget(QWidget *parent)
     ui->labelVolume->setText(QString("Volume: ").append(QString::number(m_player->volume())));
     ui->horizontalSliderVolume->setValue(m_player->volume());
     m_player->setNotifyInterval(100);
-
-    //Connections:
-    connect(m_player,SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),this,SLOT(mediaStatusChanged(QMediaPlayer::MediaStatus)));
-    connect(m_player,SIGNAL(positionChanged(qint64)),this,SLOT(on_positionChanged(qint64)));
-    connect(m_player,SIGNAL(durationChanged(qint64)),this,SLOT(on_durationChanged(qint64)));
-
+    ui->tableviewPlaylist->setSelectionBehavior(QAbstractItemView::SelectRows);
 
     //taskbarprogress:
     taskbarButton = new QWinTaskbarButton(this);
@@ -43,24 +39,55 @@ Widget::Widget(QWidget *parent)
     taskbar->show();
 
     //playlist:
-
     m_playlist_model = new QStandardItemModel(this);
     ui->tableviewPlaylist->setModel(m_playlist_model);
     m_playlist_model->setHorizontalHeaderLabels(QStringList() << "Audio track" << "File path");
     m_playlist = new QMediaPlaylist(m_player);
+
+
+    //Connections:
+    connect(m_player,SIGNAL(mediaStatusChanged(QMediaPlayer::MediaStatus)),this,SLOT(mediaStatusChanged(QMediaPlayer::MediaStatus)));
+    connect(m_player,SIGNAL(positionChanged(qint64)),this,SLOT(on_positionChanged(qint64)));
+    connect(m_player,SIGNAL(durationChanged(qint64)),this,SLOT(on_durationChanged(qint64)));
+    connect(m_playlist,SIGNAL(currentIndexChanged(int)),this,SLOT(currentIndexChanged(int)));
+    connect(ui->pushButtonNext, &QToolButton::clicked, m_playlist, &QMediaPlaylist::next);
+    connect(ui->pushButtonPrev, &QToolButton::clicked, m_playlist, &QMediaPlaylist::previous);
+    connect(m_playlist, &QMediaPlaylist::currentIndexChanged, ui->tableviewPlaylist,
+            [this](int index)
+    {
+        ui->labelComposition->setText(m_playlist_model->data(m_playlist_model->index(index, 0)).toString());
+        this->setWindowTitle("Potato player - " + ui->labelComposition->text());
+        ui->tableviewPlaylist->selectRow(index);
+
+    });
+    connect(ui->pushButtonClearPlaylist, &QToolButton::clicked, [this]()
+    {
+        m_playlist->clear();
+        m_playlist_model->clear();
+    });
+    connect(ui->pushButtonDelete, &QToolButton::clicked, [this]()
+    {
+        QItemSelectionModel* selection =  ui->tableviewPlaylist->selectionModel();
+        QModelIndexList rows = selection->selectedRows();
+        std::sort(rows.begin(), rows.end());
+        int num_deleted = 0;
+        for (QModelIndex element:rows) {
+            m_playlist_model->removeRow(element.row() - num_deleted);
+            m_playlist->removeMedia(element.row() - num_deleted);
+            num_deleted++;
+        }
+    });
+
     ui->tableviewPlaylist->hideColumn(1);
     ui->tableviewPlaylist->horizontalHeader()->setStretchLastSection(true);
     ui->tableviewPlaylist->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-
-    connect(m_playlist,SIGNAL(currentIndexChanged(int)),this,SLOT(currentIndexChanged(int)));
-
-    loadPlaylist();
+    loadPlaylist(DEFAULT_PLAYLIST);
     m_player->setPlaylist(m_playlist);
 }
 Widget::~Widget()
 {
-    savePlaylist();
+    savePlaylist(DEFAULT_PLAYLIST);
     delete m_playlist;
     delete m_playlist_model;
     delete taskbarButton;
@@ -71,31 +98,35 @@ Widget::~Widget()
 
 void Widget::on_pushButtonOpen_clicked()
 {
-//    QString file = QFileDialog::getOpenFileName(
-//                this,               //Parent window
-//                tr("Open file"),    //Title of dialog window
-//                "D:\\Музыка\\Моя музыка",            //Рабочий каталог
-//                tr("Audio files (*.mp3 *.flac)")
-//                );
-//    m_player->setMedia(QUrl::fromLocalFile(file));
-//    ui->labelComposition->setText(file.split('/').last());
-//    this->setWindowTitle(QString("Potato Music - ").append((file.split('/').last())));
+
     QStringList files = QFileDialog::getOpenFileNames(
                 this,
                 tr("Open file"),
-                "D:\\Музыка\\Моя музыка",
-                tr("Audio files (*.mp3 *.flac)")
+                "D:\\music",
+                tr("Audio files (*.mp3 *.flac);; MP-3 (*.mp3);; Flac (*.flac);; Playlists (*.m3u *.cue);; M3U (*.m3u);; CUE (*.cue)")
                 );
-    for (QString filesPath: files)
+    if(!(files.last().split('.').last() == "cue") && !(files.last().split('.').last() == "m3u"))
     {
-        QList<QStandardItem*> items;
-        items.append(new QStandardItem(QDir(filesPath).dirName()));
-        items.append(new QStandardItem(filesPath));
-        m_playlist_model->appendRow(items);
-        m_playlist->addMedia(QUrl(filesPath));
+        for (QString filesPath: files)
+        {
+            QList<QStandardItem*> items;
+            items.append(new QStandardItem(QDir(filesPath).dirName()));
+            items.append(new QStandardItem(filesPath));
+            m_playlist_model->appendRow(items);
+            m_playlist->addMedia(QUrl(filesPath));
+        }
+        ui->labelDebug->setText("hello");
+    }
+    else
+    {
+        if(files.last().split('.').last() == "m3u")loadPlaylist(files.last());
+        if(files.last().split('.').last() == "cue")
+        {
+            load_cue_playlist(files.last());
+            isCuePlaylist = true;
+        }
     }
     m_player->setPlaylist(m_playlist);
-    ui->tableviewPlaylist->selectRow(m_playlist->currentIndex());
 }
 
 
@@ -106,10 +137,21 @@ void Widget::on_horizontalSliderVolume_valueChanged(int value)
 }
 
 
-void Widget::on_pushButtonPlay_clicked()
+void Widget::on_pushButtonPlayPause_clicked()
 {
-    m_player->play();
-    //ui->labelDuration->setText(secondsToMinutes(m_player->duration()/1000));
+    if(played)
+    {
+        played = false;
+        m_player->pause();
+        ui->pushButtonPlayPause->setIcon(style()->standardIcon(QStyle::SP_MediaPlay));
+    }
+    else
+    {
+        played = true;
+        m_player->play();
+        ui->pushButtonPlayPause->setIcon(style()->standardIcon(QStyle::SP_MediaPause));
+    }
+
     taskbar->resume();
 }
 
@@ -130,16 +172,17 @@ void Widget::on_positionChanged(qint64 progress)
 {
     ui->horizontalSliderProgress->setValue(progress);
     QTime qt_position = QTime::fromMSecsSinceStartOfDay(progress);
-    ui->labelProgress->setText(qt_position.toString("mm:ss"));
+    ui->labelProgress->setText(qt_position.toString("hh:mm:ss"));
     taskbar->setValue(progress);
 }
 
 void Widget::on_durationChanged(qint64 duration)
 {
-   ui->horizontalSliderProgress->setMaximum(duration);
-   QTime qt_duration = QTime::fromMSecsSinceStartOfDay(duration);
-   ui->labelDuration->setText(QString("Duration:").append(qt_duration.toString("mm:ss")));
-   taskbar->setMaximum(duration);
+    ui->labelComposition->text();
+    ui->horizontalSliderProgress->setMaximum(duration);
+    QTime qt_duration = QTime::fromMSecsSinceStartOfDay(duration);
+    ui->labelDuration->setText(QString("Duration:").append(qt_duration.toString("hh:mm:ss")));
+    taskbar->setMaximum(duration);
 }
 
 
@@ -155,7 +198,6 @@ QString Widget::secondsToMinutes(const qint64 seconds)
 void Widget::on_horizontalSliderProgress_sliderMoved(int position)
 {
     m_player->setPosition(position);
-    //ui->labelProgress->setText(secondsToMinutes(position * m_player->duration()/100000));
 }
 
 
@@ -192,36 +234,23 @@ void Widget::on_pushButtonMute_clicked()
     ui->pushButtonMute->setIcon(style()->standardIcon(muted?QStyle::SP_MediaVolumeMuted:QStyle::SP_MediaVolume));
 }
 
-
-void Widget::on_pushButtonPrev_clicked()
-{
-    m_playlist->previous();
-    //ui->tableviewPlaylist->selectRow(m_playlist->currentIndex());
-}
-
-
-void Widget::on_pushButtonNext_clicked()
-{
-    m_playlist->next();
-    //ui->tableviewPlaylist->selectRow(m_playlist->currentIndex());
-}
-
-
 void Widget::on_tableviewPlaylist_doubleClicked(const QModelIndex &index)
 {
-    m_playlist->setCurrentIndex(index.row());
-}
-
-
-void Widget::on_pushButtonShuffle_clicked()
-{
-    m_playlist->shuffle();
+    if(!isCuePlaylist)m_playlist->setCurrentIndex(index.row());
+    else
+    {
+        qint64 position = to_mseconds(tracklist.take(index.data().toString()));
+        ui->horizontalSliderProgress->setValue(position);
+        m_player->setPosition(position);
+        ui->labelComposition->setText(index.data().toString());
+        ui->labelDebug->setText(QString::number(index.row()));
+    }
 }
 
 
 void Widget::on_pushButtonRound_clicked()
 {
-    m_playlist->setPlaybackMode(QMediaPlaylist::Loop);
+    m_playlist->setPlaybackMode(QMediaPlaylist::PlaybackMode::Loop);
 }
 
 
@@ -231,16 +260,89 @@ void Widget::currentIndexChanged(int index)
 }
 
 
-void Widget::savePlaylist()
+void Widget::savePlaylist(QString filename)
 {
-    m_playlist->save(QUrl("file:///D:\\Qt\\Source\\Repos\\Qt\\MediaPlayer\\Save\\playlist.txt"), "m3u");
+    QString format = filename.split('.').last();
+    m_playlist->save(QUrl::fromLocalFile(DEFAULT_PLAYLIST), format.toStdString().c_str());
     ui->labelComposition->setText("save done");
 }
 
-void Widget::loadPlaylist()//in progress
+void Widget::loadPlaylist(QString filename)
 {
-    QUrl url = QUrl::fromLocalFile("file:///D:/Qt/Source/Repos/Qt/MediaPlayer/Save/playlist.txt");
-    m_playlist->load(url);
-    ui->labelComposition->setText("load done " +  QString::number(m_playlist->mediaCount()));
-    m_player->setPlaylist(m_playlist);
+    QString format = filename.split('.').last();
+    m_playlist->load(QUrl::fromLocalFile(DEFAULT_PLAYLIST), format.toStdString().c_str());
+    for (int i = 0; i < m_playlist->mediaCount(); i++)
+    {
+        QMediaContent m_content = m_playlist->media(i);
+        QString url = m_content.canonicalUrl().url();
+        QList<QStandardItem*> items;
+        items.append(new QStandardItem(QDir(url).dirName()));
+        items.append(new QStandardItem(url));
+        m_playlist_model->appendRow(items);
+    }
 }
+
+void Widget::load_cue_playlist(QString filename)
+{
+    QString performer;
+    QString flac_file;
+    QFile file(filename);
+    QDir dir = QFileInfo(file).absoluteDir();
+    QString full_name;
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        return;
+    }
+    while(!file.atEnd())
+    {
+        QString buffer = file.readLine();
+        if(buffer.split(' ')[0] == "PERFORMER") performer = buffer.remove(0, strlen("PERFORMER") + 1);
+        if(buffer.split(' ')[0] == "FILE")
+        {
+            QString path = dir.absolutePath();
+            flac_file = buffer.remove("FILE \"").remove("\" WAVE\n");
+            full_name = path + "/" + flac_file;
+        }
+        if(buffer.contains("TRACK"))
+        {
+            QString composition;
+            do
+            {
+                buffer = file.readLine();
+                QString title;
+
+                if(buffer.contains("TITLE"))
+                {
+                    title = buffer.remove(0, strlen("    TITLE") + 1).remove("\"").remove("\n").remove("*");
+                    composition = performer.remove("\"").remove("\n") + " - " + title;
+                    QList<QStandardItem*> items;
+                    items.append(new QStandardItem(composition));
+                    items.append(new QStandardItem(full_name));
+                    m_playlist_model->appendRow(items);
+                }
+
+                if(buffer.contains("INDEX 01"))
+                {
+                    QString index = buffer.remove(0, strlen("    INDEX 01") + 1).remove("\n");
+                    tracklist.insert(composition, index);
+                    break;
+                }
+            }
+            while(!buffer.contains("INDEX 01"));
+        }
+    }
+    m_playlist->addMedia(QUrl(full_name));
+    file.close();
+}
+
+int Widget::to_mseconds(const QString str)
+{
+    int minutes = str.split(':')[0].toInt();
+    int seconds = str.split(':')[1].toInt();
+    int mseconds = str.split(':')[2].toInt();
+    return mseconds + seconds * 1000 + minutes * 60000;
+}
+
+
+
+
